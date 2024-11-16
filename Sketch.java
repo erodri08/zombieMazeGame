@@ -3,7 +3,7 @@ import processing.core.PImage;
 
 /**
 * In this program, a game is generated where the player has to escape the maze by collecting keys and avoiding falling rocks and zombies using the WASD keys.
-* @author: Ethan Rodrigues and Aurora Chen
+* @author: Ethan Rodrigues
 * 
 */
 public class Sketch extends PApplet {
