@@ -8,20 +8,13 @@ import processing.core.PImage;
 */
 public class Sketch extends PApplet {
 
-  // declare gameplay images
-  PImage imgKey;
-  PImage imgSmallKey;
-  PImage imgFlashlightCircle;
-  PImage imgBackground;
-  PImage imgHeart;
-  PImage imgEmptyHeart;
+  // declare gameplay image
 
+  PImage imgKey, imgSmallKey, imgFlashlightCircle, imgBackground, imgHeart, imgEmptyHeart;
+  
   // declare player images
-  PImage imgRobot;
-  PImage imgRobotStill;
-  PImage imgRobotWalkingSheet;
-  PImage [] robotFrames;
-  PImage imgRobotFall;
+  PImage imgRobot, imgRobotStill, imgRobotWalkingSheet, imgRobotFall;
+  PImage[] robotFrames;
 
   // declare player variables
   int intWalkingRobotFrames = 8;
@@ -39,11 +32,8 @@ public class Sketch extends PApplet {
   int playerLives = 5;
 
   // declare zombie images
-  PImage imgZombie;
-  PImage imgZombieStill;
-  PImage imgZombieAttack;
-  PImage imgZombieWalkingSheet;
-  PImage [] zombieFrames;
+  PImage imgZombie, imgZombieStill, imgZombieAttack, imgZombieWalkingSheet;
+  PImage[] zombieFrames;
 
   // declare zombie variables
   int intWalkingZombieFrames = 3;
@@ -82,11 +72,7 @@ public class Sketch extends PApplet {
   float zombie5Speed = 3;
   
   // declare meny screen images and menu screen vairables
-  PImage imgInstructionScreen;
-  PImage imgLooseScreen;
-  PImage imgMenuScreen;
-  PImage imgWinScreen;
-
+  PImage imgInstructionScreen, imgLooseScreen, imgMenuScreen, imgWinScreen;
   boolean isShowingMenu = false;
 
   // arrays for the falling rocks
