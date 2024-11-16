@@ -124,74 +124,74 @@ public class Sketch extends PApplet {
 
   public void setup() {
 
-   // background colour and image
-   background(139, 163, 155);
-   imgBackground = loadImage("Background.png");
+    // background colour and image
+    background(139, 163, 155);
+    imgBackground = loadImage("gameImages/Background.png");
 
-   // set menu screen images
-   imgInstructionScreen = loadImage("InstructionScreen.png");
-   imgLooseScreen = loadImage("LooseScreen.png");
-   imgMenuScreen = loadImage("MenuScreen.png");
-   imgWinScreen = loadImage("WinScreen.png");
+    // set menu screen images
+    imgInstructionScreen = loadImage("gameImages/InstructionScreen.png");
+    imgLooseScreen = loadImage("gameImages/LooseScreen.png");
+    imgMenuScreen = loadImage("gameImages/MenuScreen.png");
+    imgWinScreen = loadImage("gameImages/WinScreen.png");
 
-   // set key images
-   imgKey = loadImage("keyImage.png");
-   imgKey.resize(100,100);
+    // set key images
+    imgKey = loadImage("gameImages/keyImage.png");
+    imgKey.resize(100, 100);
 
-   imgSmallKey =loadImage("keyImage.png");
-   imgSmallKey.resize(75,50);
+    imgSmallKey = loadImage("gameImages/keyImage.png");
+    imgSmallKey.resize(75, 50);
 
-   // set heart images
-   imgHeart = loadImage("heart.png");
-   imgHeart.resize(30,30);
-   imgEmptyHeart = loadImage("EmptyHeart.png");
-   imgEmptyHeart.resize(30,30);
+    // set heart images
+    imgHeart = loadImage("gameImages/heart.png");
+    imgHeart.resize(30, 30);
+    imgEmptyHeart = loadImage("gameImages/EmptyHeart.png");
+    imgEmptyHeart.resize(30, 30);
 
-   // set flashlight circle images
-   imgFlashlightCircle = loadImage("flashlightCircle2.png");
-   imgFlashlightCircle.resize(imgFlashlightCircle.width * 2, imgFlashlightCircle.height * 2);
+    // set flashlight circle images
+    imgFlashlightCircle = loadImage("gameImages/flashlightCircle2.png");
+    imgFlashlightCircle.resize(imgFlashlightCircle.width * 2, imgFlashlightCircle.height * 2);
 
-   // set robot images
-   imgRobot = loadImage("RobotSpriteSheet.png");
+    // set robot images
+    imgRobot = loadImage("gameImages/RobotSpriteSheet.png");
 
-   imgRobotStill = imgRobot.get(0,0,192,256);
-   imgRobotStill.resize(imgRobotStill.width/3, imgRobotStill.height/3);
+    imgRobotStill = imgRobot.get(0, 0, 192, 256);
+    imgRobotStill.resize(imgRobotStill.width / 3, imgRobotStill.height / 3);
 
-   imgRobotWalkingSheet = imgRobot.get(0,1024,1536,256);
-   imgRobotWalkingSheet.resize(imgRobotWalkingSheet.width/3, imgRobotWalkingSheet.height/3);
+    imgRobotWalkingSheet = imgRobot.get(0, 1024, 1536, 256);
+    imgRobotWalkingSheet.resize(imgRobotWalkingSheet.width / 3, imgRobotWalkingSheet.height / 3);
 
-   imgRobotFall = imgRobot.get(768,768,192,256);
-   imgRobotFall.resize(imgRobotFall.width/3,imgRobotFall.height/3);
+    imgRobotFall = imgRobot.get(768, 768, 192, 256);
+    imgRobotFall.resize(imgRobotFall.width / 3, imgRobotFall.height / 3);
 
-   // set zombie images
-   imgZombie = loadImage("ZombieSpriteSheet.png");
+    // set zombie images
+    imgZombie = loadImage("gameImages/ZombieSpriteSheet.png");
 
-   imgZombieStill = imgZombie.get(0,0,192,256);
-   imgZombieStill.resize(imgZombieStill.width/3, imgZombieStill.height/3);
+    imgZombieStill = imgZombie.get(0, 0, 192, 256);
+    imgZombieStill.resize(imgZombieStill.width / 3, imgZombieStill.height / 3);
 
-   imgZombieAttack = imgZombie.get(384,0,192,256);
-   imgZombieAttack.resize(imgZombieAttack.width/3, imgZombieAttack.height/3);
+    imgZombieAttack = imgZombie.get(384, 0, 192, 256);
+    imgZombieAttack.resize(imgZombieAttack.width / 3, imgZombieAttack.height / 3);
 
-   imgZombieWalkingSheet = imgZombie.get(0,768,576,256);
-   imgZombieWalkingSheet.resize(imgZombieWalkingSheet.width/3, imgZombieWalkingSheet.height/3);
+    imgZombieWalkingSheet = imgZombie.get(0, 768, 576, 256);
+    imgZombieWalkingSheet.resize(imgZombieWalkingSheet.width / 3, imgZombieWalkingSheet.height / 3);
 
-   // robot walking sprite sheet setup
-   robotFrames = new PImage[intWalkingRobotFrames];
-    for(int frameNum = 0; frameNum < robotFrames.length; frameNum++ ){
-      robotFrames[frameNum] = imgRobotWalkingSheet.get(intWalkingFrameWidth*frameNum, 0, intWalkingFrameWidth, imgRobotWalkingSheet.height );
+    // robot walking sprite sheet setup
+    robotFrames = new PImage[intWalkingRobotFrames];
+    for (int frameNum = 0; frameNum < robotFrames.length; frameNum++) {
+      robotFrames[frameNum] = imgRobotWalkingSheet.get(intWalkingFrameWidth * frameNum, 0, intWalkingFrameWidth, imgRobotWalkingSheet.height);
     }
 
-   // zombie walking sprite sheet setup
-   zombieFrames = new PImage[intWalkingZombieFrames];
-   for(int frameNum = 0; frameNum < zombieFrames.length; frameNum++ ){
-     zombieFrames[frameNum] = imgZombieWalkingSheet.get(intWalkingFrameWidth*frameNum, 0, intWalkingFrameWidth, imgZombieWalkingSheet.height );
-   }
+    // zombie walking sprite sheet setup
+    zombieFrames = new PImage[intWalkingZombieFrames];
+    for (int frameNum = 0; frameNum < zombieFrames.length; frameNum++) {
+      zombieFrames[frameNum] = imgZombieWalkingSheet.get(intWalkingFrameWidth * frameNum, 0, intWalkingFrameWidth, imgZombieWalkingSheet.height);
+    }
 
-   // loop for locations of falling rocks
-   for (int i = 0; i < circleX.length; i++){
-     circleY[i] = random(height);
-     circleX[i] = random(120, width);
-    }  
+    // loop for locations of falling rocks
+    for (int i = 0; i < circleX.length; i++) {
+      circleY[i] = random(height);
+      circleX[i] = random(120, width);
+    }
   }
 
   public void draw() {
