@@ -1,0 +1,13 @@
+# Ignore compiled Java class files
+*.class
+
+# ignore build directories
+bin/
+build/
+out/
+
+# ignore logs
+*.log
+
+# macOS system files
+.DS_Store
