@@ -1,10 +1,11 @@
 /**
- * Represents which screen/state the game is currently displaying.
+ * All game screens / states.
  * @author Ethan Rodrigues
  */
+
 public enum GameState {
     MENU,
-    INSTRUCTIONS,
+    LEADERBOARD,
     PLAYING,
     WIN,
     GAME_OVER

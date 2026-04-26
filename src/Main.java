@@ -3,8 +3,6 @@ import javax.swing.SwingUtilities;
 
 /**
  * Entry point for Zombie Maze.
- * Uses Java Swing 
- *
  * @author Ethan Rodrigues
  */
 public class Main {
@@ -12,15 +10,16 @@ public class Main {
         SwingUtilities.invokeLater(() -> {
             JFrame frame = new JFrame("Zombie Maze");
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            frame.setResizable(false);
+            frame.setResizable(true);
 
             GamePanel panel = new GamePanel();
             frame.add(panel);
             frame.pack();
-            frame.setLocationRelativeTo(null);  // center on screen
+            frame.setSize(1640, 840);
+            frame.setLocationRelativeTo(null);
             frame.setVisible(true);
 
-            panel.init();  // load assets and start game loop
+            panel.init();
         });
     }
 }

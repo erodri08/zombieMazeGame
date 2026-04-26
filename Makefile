@@ -1,17 +1,10 @@
-# ============================================================
 # Zombie Maze — Makefile
-# ============================================================
-# To Use:
-#   make        → compile all sources into bin/
-#   make run    → compile & run
-#   make clean  → remove bin/
-#
-# Requirements:
-#   Java JDK 11+  (javac + java)
-#     macOS:   brew install openjdk
-#     Ubuntu:  sudo apt install default-jdk
-#     Windows: winget install Microsoft.OpenJDK.21
-# ============================================================
+
+
+# NOTE: Requires Java JDK 11+  (javac + java)
+#   macOS:   brew install openjdk
+#   Ubuntu:  sudo apt install default-jdk
+#   Windows: winget install Microsoft.OpenJDK.21
 
 SRC_DIR = src
 BIN_DIR = bin
@@ -27,18 +20,15 @@ endif
 
 JAVAC := $(shell which javac 2>/dev/null)
 JAVA  := $(shell which java  2>/dev/null)
-
 ifeq ($(JAVAC),)
-  $(error javac not found. Install JDK 11+ and add it to your PATH.)
+  $(error javac not found. Install JDK 11+ and add it to PATH.)
 endif
 
 .PHONY: all run clean
 
 all: $(BIN_DIR)
 	$(JAVAC) -d $(BIN_DIR) $(SRCS)
-	@echo ""
-	@echo "  Build complete. Run with:  make run"
-	@echo ""
+	@echo "Build complete. Run: make run"
 
 $(BIN_DIR):
 	mkdir -p $(BIN_DIR)
@@ -48,4 +38,3 @@ run: all
 
 clean:
 	rm -rf $(BIN_DIR)
-	@echo "  Cleaned."

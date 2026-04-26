@@ -3,92 +3,130 @@ import java.awt.image.BufferedImage;
 import java.util.Set;
 
 /**
- * The player character (robot). Handles movement, animation, lives, and invincibility.
- * Pure Java — no external dependencies.
+ * The player character (robot).
+ * Sprite size and hitbox scale with the level's playerScale factor.
+ *
+ * Hitbox is offset from the sprite origin to align with the robot's actual
+ * visible pixels.  The sprite sheet cell (192×256) has ~29% transparent
+ * padding at the top and ~16% on each side, so without an offset the hitbox
+ * sat far above and wider than the visible character, causing the asymmetric
+ * wall gaps (too much gap above, clipping below).
+ *
+ * hitOffX / hitOffY: pixels from the sprite top-left to the hitbox top-left.
+ * All collision and overlap calls use (x + hitOffX, y + hitOffY) as the
+ * hitbox origin.
  *
  * @author Ethan Rodrigues
  */
 public class Player {
 
-    // Sprite sheet constants (matches original sprite sheet layout)
-    private static final int WALK_FRAMES  = 8;
-    private static final int CELL_W_PX   = 192;  // raw cell width in sheet
-    private static final int CELL_H_PX   = 256;
-    private static final int SCALE        = 3;
-    private static final int FRAME_W      = CELL_W_PX / SCALE;  // 64
-    private static final int FRAME_H      = CELL_H_PX / SCALE;  // 85
+    private static final int CELL_W      = 192;
+    private static final int CELL_H      = 256;
+    private static final int BASE_SCALE  = 3;
+    private static final int WALK_FRAMES = 8;
 
-    // Hitbox (slightly smaller than sprite to be fair)
-    public static final int WIDTH  = 50;
-    public static final int HEIGHT = 60;
+    // Transparent-padding fractions measured from the sprite sheet
+    private static final float TOP_PAD_FRAC  = 74f / 256f; 
+    private static final float SIDE_PAD_FRAC = 31f / 192f; 
 
-    public static final int MAX_LIVES = 5;
+    // Extra inset so the hitbox is a couple px inside the visible silhouette
+    private static final int INSET = 2;
+
+    public static final int MAX_LIVES = 10;
+
+    // Rendered sprite dimensions
+    public int frameW, frameH;
+
+    // Hitbox offset from sprite origin, and hitbox size
+    public int hitOffX, hitOffY;
+    public int hitW, hitH;
 
     public float x, y;
-    public final float speed = 5;
+    public float speed = 5; 
     public int lives = MAX_LIVES;
 
-    // Invincibility window after a hit (~1.5 s at 60 fps)
     private int invincibleTicks = 0;
     private static final int INVINCIBLE_DURATION = 90;
 
-    // Sprites
     private BufferedImage imgStill;
     private BufferedImage[] walkFrames;
 
+    private CollisionChecker collisionChecker;
+
     public Player() {}
 
-    /** Load and slice the robot sprite sheet. Called once during game setup. */
-    public void loadSprites(BufferedImage sheet) {
-        // Still frame: row 0, column 0
-        imgStill = SpriteSheet.cropAndScale(sheet,
-                0, 0, CELL_W_PX, CELL_H_PX,
-                FRAME_W, FRAME_H);
+    /** Load sprites and compute hitbox geometry at a given scale (1.0 = normal). */
+    public void loadSprites(BufferedImage sheet, float scale) {
+        frameW = Math.max(20, (int)(CELL_W / BASE_SCALE * scale));
+        frameH = Math.max(24, (int)(CELL_H / BASE_SCALE * scale));
 
-        // Walking strip: row 4 (y=1024), 8 frames across
-        BufferedImage walkStrip = SpriteSheet.crop(sheet, 0, 1024, CELL_W_PX * WALK_FRAMES, CELL_H_PX);
-        walkFrames = SpriteSheet.sliceRow(walkStrip, WALK_FRAMES, FRAME_W, FRAME_H);
+        int topPad  = Math.round(TOP_PAD_FRAC  * frameH);
+        int sidePad = Math.round(SIDE_PAD_FRAC * frameW);
+
+        hitOffX = sidePad + INSET;
+        hitOffY = topPad  + INSET;
+        hitW    = frameW - sidePad * 2 - INSET * 2;
+        hitH    = frameH - topPad      - INSET * 2; 
+
+        // Speed scales with the player size: bigger = faster, smaller = slower
+        // Base speed 5 at scale 1.0; range roughly 3.5–5.5
+        speed = Math.max(2.5f, 4.5f * scale);
+
+        imgStill = SpriteSheet.cropAndScale(sheet, 0, 0, CELL_W, CELL_H, frameW, frameH);
+        BufferedImage walkStrip = SpriteSheet.crop(sheet, 0, 1024, CELL_W * WALK_FRAMES, CELL_H);
+        walkFrames = SpriteSheet.sliceRow(walkStrip, WALK_FRAMES, frameW, frameH);
     }
 
-    /**
-     * Draw the player. frameCount drives the walk animation.
-     */
+    /** World-space X of the hitbox left edge. */
+    public float hitX() { return x + hitOffX; }
+    /** World-space Y of the hitbox top edge. */
+    public float hitY() { return y + hitOffY; }
+
     public void draw(Graphics2D g, long frameCount, boolean moving) {
+        if (invincibleTicks > 0 && (invincibleTicks / 6) % 2 == 0) return;
         BufferedImage frame = moving
                 ? walkFrames[(int)(frameCount / 3) % WALK_FRAMES]
                 : imgStill;
-        // Flash during invincibility: skip every other 6 frames
-        if (invincibleTicks > 0 && (invincibleTicks / 6) % 2 == 0) return;
         g.drawImage(frame, (int) x, (int) y, null);
     }
 
-    /**
-     * Apply movement based on currently held keys and wall checks.
-     * keysDown is the set of currently pressed key chars (lowercased).
-     */
-    public void handleMovement(Set<Character> keysDown, CollisionChecker walls, int keysCollected) {
-        if (keysDown.contains('w') && walls.canMoveUp(x, y))                   y -= speed;
-        if (keysDown.contains('s') && walls.canMoveDown(x, y))                 y += speed;
-        if (keysDown.contains('a') && walls.canMoveLeft(x, y))                 x -= speed;
-        if (keysDown.contains('d') && walls.canMoveRight(x, y, keysCollected)) x += speed;
+    public void handleMovement(Set<Character> keysDown, CollisionChecker cc) {
+        this.collisionChecker = cc;
+        if (keysDown.contains('w') || keysDown.contains('\u2191')) {
+            if (cc.canMoveUp(hitX(), hitY(), hitW, hitH, speed))    y -= speed;
+        }
+        if (keysDown.contains('s') || keysDown.contains('\u2193')) {
+            if (cc.canMoveDown(hitX(), hitY(), hitW, hitH, speed))  y += speed;
+        }
+        if (keysDown.contains('a') || keysDown.contains('\u2190')) {
+            if (cc.canMoveLeft(hitX(), hitY(), hitW, hitH, speed))  x -= speed;
+        }
+        if (keysDown.contains('d') || keysDown.contains('\u2192')) {
+            if (cc.canMoveRight(hitX(), hitY(), hitW, hitH, speed)) x += speed;
+        }
     }
 
     public boolean isMoving(Set<Character> keysDown) {
         return keysDown.contains('w') || keysDown.contains('a')
-            || keysDown.contains('s') || keysDown.contains('d');
+            || keysDown.contains('s') || keysDown.contains('d')
+            || keysDown.contains('\u2190') || keysDown.contains('\u2191')
+            || keysDown.contains('\u2192') || keysDown.contains('\u2193');
     }
 
-    /** AABB overlap test against an enemy rectangle. */
     public boolean overlaps(float ex, float ey, float ew, float eh) {
-        return x < ex + ew && x + WIDTH > ex && y < ey + eh && y + HEIGHT > ey;
+        return CollisionChecker.aabb(hitX(), hitY(), hitW, hitH, ex, ey, ew, eh);
     }
 
-    /** Lose a life and teleport back to the start position. */
-    public void loseLife(float startX, float startY) {
+    public void loseLife(float respawnX, float respawnY) {
         if (invincibleTicks > 0) return;
         lives--;
-        x = startX;
-        y = startY;
+        x = respawnX;
+        y = respawnY;
+        if (collisionChecker != null) {
+            float[] safe = collisionChecker.pushOut(hitX(), hitY(), hitW, hitH);
+            x = safe[0] - hitOffX;
+            y = safe[1] - hitOffY;
+        }
         invincibleTicks = INVINCIBLE_DURATION;
     }
 
@@ -98,10 +136,34 @@ public class Player {
 
     public boolean isInvincible() { return invincibleTicks > 0; }
 
-    public void reset(float startX, float startY) {
-        x = startX;
-        y = startY;
+    /** Make the player briefly invincible (used when touching a zombie to heal it). */
+    public void forceInvincible(int ticks) {
+        invincibleTicks = Math.max(invincibleTicks, ticks);
+    }
+
+    public void reset(float startX, float startY, CollisionChecker cc) {
+        this.collisionChecker = cc;
+        x = startX; y = startY;
         lives = MAX_LIVES;
         invincibleTicks = 0;
+        if (cc != null) {
+            float[] safe = cc.pushOut(hitX(), hitY(), hitW, hitH);
+            x = safe[0] - hitOffX;
+            y = safe[1] - hitOffY;
+        }
     }
+
+    public void resetPosition(float startX, float startY, CollisionChecker cc) {
+        this.collisionChecker = cc;
+        x = startX; y = startY;
+        invincibleTicks = 0;
+        if (cc != null) {
+            float[] safe = cc.pushOut(hitX(), hitY(), hitW, hitH);
+            x = safe[0] - hitOffX;
+            y = safe[1] - hitOffY;
+        }
+    }
+
+    public int getFrameW() { return frameW; }
+    public int getFrameH() { return frameH; }
 }

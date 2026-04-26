@@ -1,49 +1,68 @@
-import java.awt.Color;
 import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
 import java.util.Random;
 
 /**
- * A falling rock hazard. Falls vertically and resets to a random X at the top.
- * Pure Java — no external dependencies.
- *
+ * Falling asteroid. 
+ * Renders using Asteroid.png; spins as it falls.
  * @author Ethan Rodrigues
  */
 public class Rock {
 
-    public static final float RADIUS = 20f;
-    private static final int  SPEED  = 2;
+    public  static final int RADIUS = 18;
+    private static final int SPEED  = 2;
+
+    // Asteroid image — loaded once, shared across all Rock instances
+    private static BufferedImage asteroidImg = null;
 
     public float x, y;
+    private float angle = 0f;        // current rotation in radians
+    private float spinSpeed;         // radians per frame (randomised per rock)
     private final int screenW, screenH;
     private final Random rng;
 
     public Rock(float x, float y, int screenW, int screenH, Random rng) {
-        this.x       = x;
-        this.y       = y;
-        this.screenW = screenW;
-        this.screenH = screenH;
-        this.rng     = rng;
+        this.x = x; this.y = y;
+        this.screenW = screenW; this.screenH = screenH; this.rng = rng;
+        this.spinSpeed = (0.02f + rng.nextFloat() * 0.05f) * (rng.nextBoolean() ? 1f : -1f);
+        if (asteroidImg == null) {
+            asteroidImg = SpriteSheet.scale(SpriteSheet.load("Asteroid.png"), RADIUS * 2, RADIUS * 2);
+        }
     }
 
     public void update() {
         y += SPEED;
-        if (y >= screenH + 50) {
+        angle += spinSpeed;
+        if (y - RADIUS >= screenH + 50) {
             y = -(rng.nextFloat() * 1000);
-            x = 120 + rng.nextFloat() * (screenW - 120);
+            x = 60 + rng.nextFloat() * (screenW - 120);
+            // Randomise spin speed on respawn for variety
+            spinSpeed = (0.02f + rng.nextFloat() * 0.05f) * (rng.nextBoolean() ? 1f : -1f);
         }
     }
 
     public void draw(Graphics2D g) {
-        int ix = (int)(x - RADIUS);
-        int iy = (int)(y - RADIUS);
-        int d  = (int)(RADIUS * 2);
-        g.setColor(new Color(156, 104, 50));
-        g.fillOval(ix, iy, d, d);
-        g.setColor(Color.BLACK);
-        g.drawOval(ix, iy, d, d);
+        int d = RADIUS * 2;
+        if (asteroidImg != null) {
+            // Rotate around the asteroid's centre
+            java.awt.geom.AffineTransform old = g.getTransform();
+            g.translate(x, y);
+            g.rotate(angle);
+            g.drawImage(asteroidImg, -RADIUS, -RADIUS, d, d, null);
+            g.setTransform(old);
+        } else {
+            // draw a circle if fail to load
+            int ix = (int)(x - RADIUS);
+            int iy = (int)(y - RADIUS);
+            g.setColor(new java.awt.Color(156, 104, 50));
+            g.fillOval(ix, iy, d, d);
+            g.setColor(java.awt.Color.BLACK);
+            g.drawOval(ix, iy, d, d);
+        }
     }
 
-    public boolean overlapsPlayer(float px, float py) {
-        return Math.abs(px - x) < RADIUS * 2 && Math.abs(py - y) < RADIUS * 2;
+    /** AABB: rock occupies [x-R, y-R, 2R, 2R]; player occupies [px, py, pw, ph]. */
+    public boolean overlapsPlayer(float px, float py, int pw, int ph) {
+        return CollisionChecker.aabb(x - RADIUS, y - RADIUS, RADIUS * 2, RADIUS * 2, px, py, pw, ph);
     }
 }

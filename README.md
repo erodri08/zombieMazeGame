@@ -2,7 +2,7 @@
 
 **Created by Ethan Rodrigues**
 
-A Java/Processing maze game where you navigate a dark maze, collect keys, avoid zombies and falling rocks, and escape alive.
+An object-oriented Java Swing game where the player navigates a dark maze, avoids enemies, collects keys, finds a cure, and heals every zombie before escaping. 
 
 ---
 
@@ -10,98 +10,115 @@ A Java/Processing maze game where you navigate a dark maze, collect keys, avoid 
 
 ```
 ZombieMaze/
-├── Makefile                  ← build & run commands
-├── README.md                 ← this file
+├── Makefile
+├── README.md
+├── src/                              - all Java source files
+│   ├── Main.java                           - entry point
+│   ├── GamePanel.java                      - game loop, level management, input
+│   ├── GameState.java                      - MENU / PLAYING / WIN / GAME_OVER
+│   ├── LevelData.java                      - per-level config (walls, keys, zombies, background…)
+│   ├── Levels.java                         - level index; routes level number to the right class
+│   ├── Level1.java                         - Level 1 definition: 12×6 grid, large cells, dark green
+│   ├── Level2.java                         - Level 2 definition: 17×9 grid, medium cells, dark red
+│   ├── Level3.java                         - Level 3 definition: 20×11 grid, small cells, dark blue
+│   ├── LevelFinal.java                     - Final level: same grid as Level 3, golden theme, chasing zombie
+│   ├── CollisionChecker.java               - AABB wall + gate collision from LevelData.walls
+│   ├── Player.java                         - movement, scale-aware sprite, invincibility
+│   ├── Zombie.java                         - PATROL / CHASING / HUMAN modes, heal state
+│   ├── Rock.java                           - falling rock hazard
+│   ├── HUD.java                            - hearts, keys, live timer, level indicator, control legend
+│   ├── MenuRenderer.java                   - all non-gameplay screens (menu, leaderboard, win, game over)
+│   ├── Leaderboard.java                    - persistent top-times list with name entry
+│   └── SpriteSheet.java                    - image loading / cropping / scaling utilities
 │
-├── src/                      ← all Java source files
-│   ├── Main.java             ← entry point
-│   ├── Game.java             ← main PApplet; orchestrates everything
-│   ├── GameState.java        ← enum: MENU / INSTRUCTIONS / PLAYING / WIN / GAME_OVER
-│   ├── LevelData.java        ← data class holding one level's configuration
-│   ├── Levels.java           ← registry of all levels (add new levels here)
-│   ├── Player.java           ← player sprite, movement, lives, invincibility
-│   ├── Zombie.java           ← zombie patrol + animation
-│   ├── Rock.java             ← falling rock hazard
-│   ├── CollisionChecker.java ← all wall-collision logic for Level 1
-│   ├── HUD.java              ← draws hearts and key icons
-│   └── MenuRenderer.java     ← text-based menu / win / game-over / instructions screen
-│
-├── assets/                   ← all image files used at runtime
-│   ├── Background.png
+├── assets/                             - game assets
+│   ├── Background1-4.png
 │   ├── RobotSpriteSheet.png
 │   ├── ZombieSpriteSheet.png
+│   ├── ZombieSpriteSheet2-4.png
+│   ├── ZombieSpriteSheetFinal.png
+│   ├── HumanSpriteSheet.png
+│   ├── cure.png
 │   ├── keyImage.png
 │   ├── heart.png
 │   ├── EmptyHeart.png
-│   └── flashlightCircle2.png
+│   ├── flashlightCircleSmaller.png
+│   ├── flashlightCircleSmaller.png
+│   └── leaderboard.json                    - game leaderboard file (generated once items are added to the leaderboard)
 │
-└── bin/                      ← compiled .class files (created by make; git-ignored)
+└── bin/                                - compiled .class files (created by make)
 ```
 
 ---
 
 ## How to Run
 
-### Prerequisites
+### Requirements
+- **Java JDK 11+**
+  - macOS: `brew install openjdk`
+  - Ubuntu: `sudo apt install default-jdk`
+  - Windows: `winget install Microsoft.OpenJDK.21`
 
-- **Java JDK 11 or later** — check with `java -version`
-- **`make`** — ships with macOS/Linux; Windows users can install via [Chocolatey](https://chocolatey.org/) (`choco install make`) or use Git Bash
-
-### Steps
-
+### Build & Run
 ```bash
-# 1. Open a terminal in the ZombieMaze folder
 cd ZombieMaze
-
-# 2. Compile
-make
-
-# 3. Run
-make run
-
-# Or do both at once:
 make run
 ```
 
-To clean compiled files:
-
+Clean compiled files:
 ```bash
 make clean
 ```
-
-> **Note:** The game window must be launched from the `assets/` directory so that
-> Processing can find the image files. The Makefile handles this automatically via
-> `cd assets && java …`. Do **not** run `java` directly from the project root.
 
 ---
 
 ## How to Play
 
-| Key | Action |
-|-----|--------|
-| `W` | Move up |
-| `A` | Move left |
-| `S` | Move down |
-| `D` | Move right |
-
-- **Collect 4 keys** scattered throughout the maze — each key you collect is shown in the lower-right corner.
-- Collecting all 4 keys **opens the exit gate** on the right side of the screen.
-- **Avoid 5 zombies** patrolling the corridors.
-- **Avoid falling rocks** dropping from above.
-- Contact with an enemy costs **1 of your 5 lives** (shown as hearts in the upper-left).
-- Lose all 5 lives → **Game Over** screen appears.
-- Reach the exit with all keys → **Win** screen appears.
-
-### Known Limitation
-Collision detection uses rectangular bounding boxes around sprite images. Because PNG images have transparent padding around the visible character, you may occasionally lose a life when the characters do not visually appear to touch. This is a known limitation of the current approach.
+| Input | Action |
+|-------|--------|
+| `W` / `↑` | Move up |
+| `S` / `↓` | Move down |
+| `A` / `←` | Move left |
+| `D` / `→` | Move right |
+| `Q` / `ESC` | Quit to main menu |
 
 ---
 
-## Adding a New Level
+### The Full Game Loop
 
-1. Open `src/Levels.java`.
-2. Write a new private static method `level2()` following the same pattern as `level1()` — define key positions, zombie patrols, and wall rectangles.
-3. Add `level2()` to the `LEVELS` array.
-4. In `Game.java`, after a win you can call `loadLevel(1)` instead of resetting to level 0.
+#### Phase 1 — Levels 1–3
+- Collect **all keys** scattered through the maze to unlock the **exit gate** on the right
+- Avoid **patrolling zombies** and **falling rocks** — each hit costs 1 life
+- The maps for each level get bigger, making the player and their visible flashlight radius smaller each time 
+- Lives carry over between levels, the player may collect lives that are scattered throughout the maze to recover
 
-All level-specific data (walls, key positions, zombie patrol areas, gate positions) is isolated in `LevelData` and `Levels.java`, so the rest of the code needs no changes.
+#### Phase 2 — Final Level (Find the Cure)
+- A **chasing zombie** hunts you down
+- Find the **CURE vial** hidden in the maze and collect it — this restores your health and transforms the zombie back into a human once you come into contact with them
+
+#### Phase 3 — Heal-Back Traversal (Coming Back Out)
+- Re-enter each previous level from the **right side**
+- The **left entrance is locked** — it only opens once you have **touched and healed every zombie** on that level
+- After healing all zombies on a level, the entrance gate opens and you proceed further left
+- Heal all zombies across all levels and exit through **Level 1's left gate** to win
+
+---
+
+### HUD (In-Game Display)
+
+| Element | Location | Description |
+|---------|----------|-------------|
+| Hearts | Top-left | Remaining lives |
+| Timer | Top-left (below hearts) | Elapsed time, used on the leaderboard |
+| Level badge | Top-right | Level number or "FINAL LEVEL" |
+| Key icons | Bottom-right | Keys collected so far (Shown only on levels 1–3) |
+| Cure status | Bottom-right | Heal progress on the final level |
+| Control legend | Bottom strip | Always visible, indicates controls to the player |
+
+---
+
+### Win Screen & Leaderboard
+- Your **total completion time** is shown on the win screen
+- Your **leaderboard rank** is displayed before you submit your name
+- Enter your name and press **ENTER** to save your time
+- View the full leaderboard from the main menu at any time
