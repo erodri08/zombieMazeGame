@@ -27,8 +27,8 @@ public class MenuRenderer {
     private static final String FONT = "Courier New";
 
     // Buttons
-    public static final int[] BTN_BEGIN        = centred(300, 52, 370);
-    public static final int[] BTN_LEADERBOARD  = centred(300, 44, 432);
+    public static final int[] BTN_BEGIN        = centred(320, 58, 374);
+    public static final int[] BTN_LEADERBOARD  = centred(320, 52, 446);
     public static final int[] BTN_BACK         = centred(280, 52, 730);
     public static final int[] BTN_PLAY_AGAIN   = centred(380, 62, 550);
     public static final int[] BTN_WIN_AGAIN    = centred(320, 52, 700);
@@ -102,66 +102,61 @@ public class MenuRenderer {
                          long frameCount) {
         fillBg(g, w, h);
 
-        // Title
-        g.setFont(new Font(FONT, Font.BOLD, 62));
-        centreStr(g, "ZOMBIE MAZE", w, 72, COL_SHADOW, 4);
-        centreStr(g, "ZOMBIE MAZE", w, 72, COL_TEXT,   0);
+        // ── Title block ───────────────────────────────────────────────────────
+        g.setFont(new Font(FONT, Font.BOLD, 90));
+        centreStr(g, "ZOMBIE MAZE", w, 105, COL_SHADOW, 5);
+        centreStr(g, "ZOMBIE MAZE", w, 105, COL_TEXT,   0);
 
-        g.setFont(new Font(FONT, Font.PLAIN, 16));
-        centreStr(g, "by Ethan Rodrigues", w, 98, COL_TEXT, 0);
+        g.setFont(new Font(FONT, Font.ITALIC, 18));
+        centreStr(g, "by Ethan Rodrigues", w, 133, COL_SUBTLE, 0);
 
-        sep(g, w, 112);
+        sep(g, w, 152);
 
-        //  Animated sprites
+        // ── Animated sprites ──────────────────────────────────────────────────
         if (zombieFrames != null) {
             int zf = (int)(frameCount / 10) % zombieFrames.length;
-            g.drawImage(zombieFrames[zf], w/2 - 80, 122, null);
+            g.drawImage(zombieFrames[zf], w / 2 - 90, 162, null);
         }
-        if (robotFrame != null) g.drawImage(robotFrame, w/2 + 20, 122, null);
+        if (robotFrame != null) g.drawImage(robotFrame, w / 2 + 30, 162, null);
 
-        sep(g, w, 300);
+        sep(g, w, 248);
 
-        // Story text 
-        g.setFont(new Font(FONT, Font.ITALIC, 14));
+        // ── Story text ────────────────────────────────────────────────────────
         String[] story = {
             "A lab test gone wrong has turned every human on Earth into a zombie.",
             "Only one hope remains: a lone robot (you) must venture deep into a collapsing cave",
             "to find the cure hidden at the heart of a dark maze filled with zombies.",
         };
-        int sy = 218;
+        g.setFont(new Font(FONT, Font.ITALIC, 16));
+        int sy = 274;
         for (String line : story) {
             centreStr(g, line, w, sy, COL_TEXT, 0);
-            sy += 20;
+            sy += 24;
         }
 
-        // Buttons
-        drawButton(g, BTN_BEGIN,       ">> BEGIN <<");
+        sep(g, w, 350);
+
+        // ── Buttons ───────────────────────────────────────────────────────────
+        drawButton(g, BTN_BEGIN,      ">> BEGIN <<");
         drawButton(g, BTN_LEADERBOARD, "Leaderboard");
 
-        sep(g, w, 520);
+        sep(g, w, 510);
 
-        // How to play
-        int hy = 510;
-        g.setFont(new Font(FONT, Font.BOLD, 14));
-        centreStr(g, "", w, hy, COL_TEXT, 0);
-        hy += 20;
+        // ── How to play ───────────────────────────────────────────────────────
+        g.setFont(new Font(FONT, Font.BOLD, 17));
+        centreStr(g, "HOW TO PLAY", w, 544, COL_TEXT, 0);
 
-        g.setFont(new Font(FONT, Font.PLAIN, 13));
+        g.setFont(new Font(FONT, Font.PLAIN, 15));
         String[] tips = {
-            " ",
-            " ",
-            " ",
-            " HOW TO PLAY",
-
-            " Move with WASD or Arrow Keys",
-            " ESC / Q \u2014 Quit to menu",
-            " Collect ALL keys to unlock each exit gate and advance deeper into the cave.",
-            " Final level: find the cure vial, then go back and contact each zombie to heal them.",
-            " You start with 10 lives \u2014 avoid zombies, falling rocks, and don\u2019t get cornered!",
+            "Move with  WASD  or  Arrow Keys      \u2022      ESC / Q  \u2014  Quit to menu",
+            "Collect ALL keys to unlock each exit gate and advance deeper into the cave.",
+            "Final level: find the cure vial, then return and touch each zombie to heal them.",
+            "You start with 10 lives  \u2014  avoid zombies, falling rocks, and don\u2019t get cornered!",
         };
+        int hy = 572;
         for (String tip : tips) {
             centreStr(g, tip, w, hy, COL_TEXT, 0);
-            hy += 20;
+            hy += 24;
         }
     }
 
