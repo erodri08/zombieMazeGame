@@ -508,8 +508,6 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
         int cSize = Math.max(20, (int)(CURE_W * level.levelScale));
         if (!cureCollected && player.overlaps(cureX, cureY, cSize, cSize)) {
             cureCollected = true;
-            player.lives = Player.MAX_LIVES;
-            hud.showHealthRestored();
             curePickupBannerFrames = BANNER_DURATION * 2;
             walls.setEntryGateClosed(false);
         }
@@ -686,10 +684,8 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
             if (level.isFinalLevel) zombies[i].setMode(Zombie.Mode.CHASING);
         }
 
-        rocks = new Rock[level.rockCount];
-        for (int i = 0; i < level.rockCount; i++) {
-            rocks[i] = new Rock(60 + rng.nextFloat() * (W - 120), rng.nextFloat() * H, W, H, rng);
-        }
+        // No rocks during heal-back — player returning through maze after collecting cure
+        rocks = new Rock[0];
 
         // Cure is in the final level only; not shown in prior levels
         if (level.isFinalLevel) { cureX = 1510; cureY = 50; }

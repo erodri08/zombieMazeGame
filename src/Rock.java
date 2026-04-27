@@ -9,8 +9,8 @@ import java.util.Random;
  */
 public class Rock {
 
-    public  static final int RADIUS = 18;
-    private static final int SPEED  = 2;
+    public  static final int RADIUS = 13;
+    private static final int SPEED  = 1;
 
     // Asteroid image — loaded once, shared across all Rock instances
     private static BufferedImage asteroidImg = null;

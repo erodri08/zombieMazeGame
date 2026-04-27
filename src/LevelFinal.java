@@ -509,7 +509,7 @@ public class LevelFinal {
             keys, zombies, walls,
             new int[]{1620, EXIT_GAP_Y, 10, CELL_H}, 0,    // exit gate
             new int[]{  20, ENTRY_GAP_Y, 10, CELL_H}, 20f, // entry gate
-            1580f, 6, true,
+            1580f, 3, true,
             hearts, LEVEL_SCALE,
             wallColor, gateColor
         );

@@ -287,7 +287,7 @@ public class Level1 {
             keys, zombies, walls,
             new int[]{1620, EXIT_GAP_Y, 10, CELL_H}, 5,
             new int[]{  20, ENTRY_GAP_Y, 10, CELL_H}, 20f,
-            1625f, 2, false,
+            1625f, 1, false,
             hearts, LEVEL_SCALE,
             wallColor, gateColor
         );
