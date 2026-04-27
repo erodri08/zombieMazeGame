@@ -1,6 +1,5 @@
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
-import java.util.*;
 
 /**
  * A single zombie. Supports three modes:
@@ -33,16 +32,15 @@ public class Zombie {
     private Mode mode;
 
     // Chase speed — always a bit slower than the player's effective speed
-    private static final float BASE_CHASE_SPEED = 1.1f;
+    private static final float BASE_CHASE_SPEED = 1.6f;
     private float chaseSpeed;
 
-    //  BFS pathfinding for final level - WORK IN PROGRESS
-    private static final int BFS_CELL = 40;
-    private static final int BFS_INTERVAL = 30;
-    private int bfsTimer = 0;
-    private List<float[]> waypoints = new ArrayList<>();
-    private int waypointIdx = 0;
-    private int lastBfsPlayerGX = -1, lastBfsPlayerGY = -1;
+    // Wall-hugging state
+    // The zombie tries the 4 cardinal directions in priority order.
+    // When it can't go toward the player it rotates through alternatives.
+    private int wallHugDir   = 0;   // 0=up,1=right,2=down,3=left — current wall-hug direction
+    private int blockedTicks = 0;   // consecutive ticks where preferred dir was blocked
+    private static final int ROTATE_AFTER = 3; // ticks before trying next direction
 
     private CollisionChecker collisionChecker;
 
@@ -156,177 +154,91 @@ public class Zombie {
         }
     }
 
-    // WORK IN PROGRESS: BFS pathfinding toward player, with wall collision checks and periodic path refresh.   
+    /**
+     * Chase the player using a wall-hugging "bug" algorithm.
+     * Priority: move toward player. If blocked, rotate through the 4 cardinal
+     * directions until one is free. This guarantees the zombie is always moving.
+     */
     private void chasePlayerBFS(float playerX, float playerY) {
         if (collisionChecker == null) {
+            // No collision data — beeline directly
             float dx = playerX - x, dy = playerY - y;
             float dist = (float) Math.sqrt(dx * dx + dy * dy);
             if (dist > 1) { x += (dx / dist) * chaseSpeed; y += (dy / dist) * chaseSpeed; }
             return;
         }
 
-        // Convert world positions to BFS grid cells
-        int myGX   = (int)(x          / BFS_CELL);
-        int myGY   = (int)(y          / BFS_CELL);
-        int plrGX  = (int)(playerX    / BFS_CELL);
-        int plrGY  = (int)(playerY    / BFS_CELL);
+        float spd = chaseSpeed;
 
-        // Recalculate path periodically 
-        bfsTimer--;
-        if (bfsTimer <= 0 || plrGX != lastBfsPlayerGX || plrGY != lastBfsPlayerGY) {
-            bfsTimer = BFS_INTERVAL;
-            lastBfsPlayerGX = plrGX;
-            lastBfsPlayerGY = plrGY;
-            computeBFSPath(myGX, myGY, plrGX, plrGY, playerX, playerY);
+        // Build 4 candidate directions sorted by how well they aim at the player.
+        // 0=up, 1=right, 2=down, 3=left
+        float dx = playerX - x;
+        float dy = playerY - y;
+
+        // Primary: whichever axis has the larger component points at the player best.
+        // We build a preference order: best cardinal first, then the other toward-player
+        // cardinal, then the two away-from-player cardinals (as last-resort wall slides).
+        int bestH = dx > 0 ? 1 : 3;   // right or left
+        int bestV = dy > 0 ? 2 : 0;   // down or up
+        int worstH = dx > 0 ? 3 : 1;
+        int worstV = dy > 0 ? 0 : 2;
+
+        int[] preference;
+        if (Math.abs(dx) >= Math.abs(dy)) {
+            preference = new int[]{ bestH, bestV, worstV, worstH };
+        } else {
+            preference = new int[]{ bestV, bestH, worstH, worstV };
         }
 
-        // Follow the current waypoint
-        if (waypoints.isEmpty()) {
-            // Fallback: move directly toward player
-            moveToward(playerX, playerY);
-            return;
+        // Try the preferred direction first; if blocked use wallHugDir rotation.
+        boolean moved = false;
+
+        // First attempt: try the ideal direction
+        if (tryMove(preference[0], spd)) {
+            wallHugDir   = preference[0];
+            blockedTicks = 0;
+            moved = true;
         }
 
-        // Advance waypoint if we're close enough
-        float[] wp = waypoints.get(waypointIdx);
-        float wdx = wp[0] - (x + width / 2f);
-        float wdy = wp[1] - (y + height / 2f);
-        float wdist = (float) Math.sqrt(wdx * wdx + wdy * wdy);
-        if (wdist < chaseSpeed + 2f) {
-            if (waypointIdx + 1 < waypoints.size()) {
-                waypointIdx++;
-                wp = waypoints.get(waypointIdx);
-                wdx = wp[0] - (x + width / 2f);
-                wdy = wp[1] - (y + height / 2f);
-                wdist = (float) Math.sqrt(wdx * wdx + wdy * wdy);
+        if (!moved) {
+            // Blocked on ideal — try rotating through remaining preferences
+            blockedTicks++;
+            if (blockedTicks >= ROTATE_AFTER) {
+                // Cycle wallHugDir through the preference list
+                wallHugDir = (wallHugDir + 1) % 4;
+                blockedTicks = 0;
+            }
+            // Try wallHugDir, then cascade through all 4 directions
+            for (int attempt = 0; attempt < 4 && !moved; attempt++) {
+                int dir = (wallHugDir + attempt) % 4;
+                if (tryMove(dir, spd)) {
+                    wallHugDir = dir;
+                    moved = true;
+                }
             }
         }
 
-        if (wdist < 1) return;
-        float nx = (wdx / wdist) * chaseSpeed;
-        float ny = (wdy / wdist) * chaseSpeed;
-
-        // Apply movement with wall sliding
-        boolean canX, canY;
-        if (nx > 0) canX = collisionChecker.canMoveRight(x, y, width, height, nx);
-        else        canX = collisionChecker.canMoveLeft (x, y, width, height, -nx);
-        if (ny > 0) canY = collisionChecker.canMoveDown(x, y, width, height,  ny);
-        else        canY = collisionChecker.canMoveUp  (x, y, width, height, -ny);
-
-        if (canX) x += nx;
-        if (canY) y += ny;
-
-        // If completely stuck (both axes blocked), trigger an immediate BFS refresh
-        if (!canX && !canY) {
-            bfsTimer = 0;
-        }
+        // If truly trapped (surrounded), do nothing this tick — very rare.
     }
 
-    private void computeBFSPath(int startGX, int startGY, int goalGX, int goalGY, float playerX, float playerY) {
-        // Determine grid bounds
-        int maxGX = (int)(1640 / BFS_CELL) + 1;
-        int maxGY = (int)(840  / BFS_CELL) + 1;
-
-        // Clamp start and goal
-        startGX = Math.max(0, Math.min(startGX, maxGX - 1));
-        startGY = Math.max(0, Math.min(startGY, maxGY - 1));
-        goalGX  = Math.max(0, Math.min(goalGX,  maxGX - 1));
-        goalGY  = Math.max(0, Math.min(goalGY,  maxGY - 1));
-
-        if (startGX == goalGX && startGY == goalGY) {
-            waypoints.clear();
-            waypointIdx = 0;
-            waypoints.add(new float[]{playerX, playerY});
-            return;
+    /** Try moving one step in direction dir. Returns true if movement succeeded. */
+    private boolean tryMove(int dir, float spd) {
+        boolean can;
+        switch (dir) {
+            case 0: can = collisionChecker.canMoveUp   (x, y, width, height, spd); break;
+            case 1: can = collisionChecker.canMoveRight(x, y, width, height, spd); break;
+            case 2: can = collisionChecker.canMoveDown (x, y, width, height, spd); break;
+            case 3: can = collisionChecker.canMoveLeft (x, y, width, height, spd); break;
+            default: return false;
         }
-
-        // BFS
-        int[][] parent = new int[maxGY][maxGX];
-        for (int[] row : parent) Arrays.fill(row, -1);
-        Queue<int[]> queue = new LinkedList<>();
-        int startKey = startGY * maxGX + startGX;
-        parent[startGY][startGX] = startKey;  // mark start visited (self-parent)
-        queue.add(new int[]{startGX, startGY});
-
-        int[] dxs = {0, 0, 1, -1};
-        int[] dys = {1, -1, 0, 0};
-
-        boolean found = false;
-        while (!queue.isEmpty()) {
-            int[] cur = queue.poll();
-            int cx = cur[0], cy = cur[1];
-            if (cx == goalGX && cy == goalGY) { found = true; break; }
-
-            for (int d = 0; d < 4; d++) {
-                int nx = cx + dxs[d];
-                int ny = cy + dys[d];
-                if (nx < 0 || ny < 0 || nx >= maxGX || ny >= maxGY) continue;
-                if (parent[ny][nx] != -1) continue;  // already visited
-
-                // Check if movement from (cx,cy) to (nx,ny) in world space is wall-free
-                float wx = cx * BFS_CELL + BFS_CELL / 2f - width / 2f;
-                float wy = cy * BFS_CELL + BFS_CELL / 2f - height / 2f;
-                float ndx = (nx - cx) * BFS_CELL;
-                float ndy = (ny - cy) * BFS_CELL;
-                boolean passable;
-                if (ndx > 0)      passable = collisionChecker.canMoveRight(wx, wy, width, height, ndx);
-                else if (ndx < 0) passable = collisionChecker.canMoveLeft (wx, wy, width, height, -ndx);
-                else if (ndy > 0) passable = collisionChecker.canMoveDown (wx, wy, width, height, ndy);
-                else              passable = collisionChecker.canMoveUp   (wx, wy, width, height, -ndy);
-
-                if (!passable) continue;
-
-                parent[ny][nx] = cy * maxGX + cx;  // encode parent as (cy*maxGX+cx)
-                queue.add(new int[]{nx, ny});
-            }
+        if (!can) return false;
+        switch (dir) {
+            case 0: y -= spd; break;
+            case 1: x += spd; break;
+            case 2: y += spd; break;
+            case 3: x -= spd; break;
         }
-
-        waypoints.clear();
-        waypointIdx = 0;
-
-        if (!found) {
-            // BFS couldn't reach player — move directly as fallback
-            waypoints.add(new float[]{playerX, playerY});
-            return;
-        }
-
-        // Reconstruct path (in reverse)
-        List<float[]> rev = new ArrayList<>();
-        int curX = goalGX, curY = goalGY;
-        while (!(curX == startGX && curY == startGY)) {
-            rev.add(new float[]{curX * BFS_CELL + BFS_CELL / 2f,
-                                 curY * BFS_CELL + BFS_CELL / 2f});
-            int par = parent[curY][curX];
-            int parX = par % maxGX;
-            int parY = par / maxGX;
-            curX = parX; curY = parY;
-        }
-
-        // Reverse so waypoints go from current position toward player
-        Collections.reverse(rev);
-
-        // Replace last waypoint with exact player position for smooth arrival
-        if (!rev.isEmpty()) {
-            rev.set(rev.size() - 1, new float[]{playerX, playerY});
-        }
-
-        waypoints = rev;
-    }
-
-    /** Simple direct movement toward a target world position (fallback). */
-    private void moveToward(float targetX, float targetY) {
-        float dx = targetX - x, dy = targetY - y;
-        float dist = (float) Math.sqrt(dx * dx + dy * dy);
-        if (dist <= 1) return;
-        float nx = (dx / dist) * chaseSpeed;
-        float ny = (dy / dist) * chaseSpeed;
-        boolean canX, canY;
-        if (nx > 0) canX = collisionChecker.canMoveRight(x, y, width, height, nx);
-        else        canX = collisionChecker.canMoveLeft (x, y, width, height, -nx);
-        if (ny > 0) canY = collisionChecker.canMoveDown(x, y, width, height,  ny);
-        else        canY = collisionChecker.canMoveUp  (x, y, width, height, -ny);
-        if (canX) x += nx;
-        if (canY) y += ny;
+        return true;
     }
 
     public void draw(Graphics2D g, long frameCount) {
